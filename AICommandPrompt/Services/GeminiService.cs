@@ -140,9 +140,9 @@ General Guidelines:
                             else
                             {
                                 // No ACTION: and no text, this is genuinely an empty/malformed response from AI.
-                                agentResponse.ActionType = "error";
-                                agentResponse.Error = "AI returned an empty or malformed response text after filtering.";
-                                // agentResponse.TextResponse = aiRawText; // original aiRawText might be useful here for debugging
+                                agentResponse.ActionType = "error_malformed_response";
+                                agentResponse.Error = "AI_MALFORMED_EMPTY_RESPONSE";
+                                agentResponse.TextResponse = aiRawText; // Provide original raw text for debugging
                             }
                         }
                         else // An ACTION: line was found
