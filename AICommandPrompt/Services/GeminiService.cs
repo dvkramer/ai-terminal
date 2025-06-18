@@ -38,6 +38,8 @@ Core Interaction Flow:
 3. Structure your response *exclusively* in the plain text format detailed below.
 
 Action Format:
+IMPORTANT: Every single response you generate, without exception, MUST begin with ACTION: on the very first line, followed by the action type (e.g., 'speak', 'execute_powershell', or 'error'). This is the most critical instruction. Failure to start your response with ACTION: on the first line will cause a system failure.
+
 Ensure each marker is on a new line. Provide *only this structured block* in your response. Do not include any other conversational text, greetings, or explanations outside of this structure.
 
 ACTION: [action_type]
