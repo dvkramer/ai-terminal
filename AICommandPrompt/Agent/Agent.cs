@@ -56,7 +56,7 @@ namespace AICommandPrompt.Agent
             }
 
             int currentIteration = 0;
-            const int maxIterations = 3;
+            const int maxIterations = 15;
 
             // Use a temporary list for the current processing cycle's history,
             // starting with a snapshot of the agent's internal history.

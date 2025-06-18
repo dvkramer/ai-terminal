@@ -22,7 +22,7 @@
         </StackPanel>
 
         <!-- Chat History Display -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="5">
+        <ScrollViewer x:Name="ChatScrollViewer" Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="5">
             <ItemsControl x:Name="ChatHistoryListBox" ItemsSource="{Binding ChatMessages}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type models:ChatMessage}">
