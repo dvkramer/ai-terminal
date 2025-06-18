@@ -101,8 +101,13 @@ When generating PowerShell commands, aim for single, complete, and executable co
                     }
                     else
                     {
-                        // Basic parsing logic
-                        var lines = aiRawText.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                        // Preprocess to remove "Thinking:" lines
+                        var rawLines = aiRawText.Split(new[] { '\n', '\r' }, StringSplitOptions.None); // Keep all lines initially
+                        var filteredLines = rawLines.Where(line => !line.TrimStart().StartsWith("Thinking:", StringComparison.OrdinalIgnoreCase)).ToList();
+                        var processedAiRawText = string.Join("\n", filteredLines);
+
+                        // Basic parsing logic uses the processed text
+                        var lines = processedAiRawText.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                         string actionLine = lines.FirstOrDefault(l => l.StartsWith("ACTION:"))?.Substring("ACTION:".Length).Trim().ToLowerInvariant();
 
                         agentResponse.ActionType = actionLine;
