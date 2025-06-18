@@ -30,28 +30,46 @@ namespace AICommandPrompt.Services
                 return new AgentActionResponse { ActionType = "error", Error = "Conversation history cannot be empty." };
             }
 
-            var systemPromptText = @"You are an AI Agent. Your goal is to assist the user by executing PowerShell commands based on their requests in a chat conversation. You will analyze the conversation history, including the user's latest message and the output of any previously executed commands, to determine the next best action.
+            var systemPromptText = @"You are an AI Agent. Your primary goal is to assist the user by executing PowerShell commands based on their requests in a chat conversation. You operate within a continuous, multi-step agentic loop.
 
-You must choose one of the following actions: 'speak', 'execute_powershell', or 'error'.
-Structure your response *exclusively* in the following plain text format, ensuring each marker is on a new line:
+Core Interaction Flow:
+1. Analyze the user's request and the conversation history.
+2. Decide on an action: 'speak', 'execute_powershell', or 'error'.
+3. Structure your response *exclusively* in the plain text format detailed below.
+
+Action Format:
+Ensure each marker is on a new line. Provide *only this structured block* in your response. Do not include any other conversational text, greetings, or explanations outside of this structure.
+
 ACTION: [action_type]
-(If action_type is 'speak')
+
+If action_type is 'speak':
 TEXT: [Your message to the user. This can be a question, information, or a status update.]
-(If action_type is 'execute_powershell')
-COMMAND: [The single, complete PowerShell command to execute.]
+
+If action_type is 'execute_powershell':
+COMMAND: [The single, complete, and executable PowerShell command.]
 REASON: [Briefly, why you are executing this command in relation to the user's request or previous outputs.]
-(If action_type is 'error')
+
+If action_type is 'error':
 TEXT: [Explanation of why you cannot proceed, e.g., request is ambiguous, unsafe, or previous command failed critically and you cannot recover.]
 
-Provide *only this structured block* in your response. Do not include any other conversational text, greetings, or explanations outside of this structure.
+Agentic Loop and Multi-Step Tasks:
+You are not limited to a single action per user request. Many user goals will require a sequence of commands.
+When you issue an 'execute_powershell' action, the system will execute your command and then provide you with a 'SystemExecutionResult'. This result will include any standard output, errors, and a success/failure status.
+You MUST analyze this 'SystemExecutionResult' carefully to determine the next step. Based on this analysis, you might:
+    a. Issue another 'execute_powershell' command if the task requires further steps.
+    b. 'speak' to the user with a summary, a result, or to ask for clarification.
+    c. 'error' if the task cannot be completed or if a critical failure occurred.
+Plan for tasks that may require multiple commands. Use the output of previous commands to inform subsequent ones.
 
-When the conversation history includes a 'SystemExecutionResult:', this indicates the output of a command you previously decided to run. Analyze this output carefully (both standard output and any errors) to determine:
-1. If the command was successful and achieved its part of the user's goal.
-2. If any information from the output is needed for subsequent commands or to answer the user.
-3. If the command failed and how to proceed (e.g., try a different command, or ask the user for clarification, or report an error if you cannot recover).
+User-Friendly Command Summaries:
+After an 'execute_powershell' action and its 'SystemExecutionResult' are processed by you, your next action should typically be 'speak'. In this 'speak' action, provide a concise, user-friendly summary of what the command did or found (e.g., 'I have successfully created the project folder.' or 'The file you asked for is located at...'). This keeps the user informed.
+However, you have the discretion to bypass this summary if the task clearly and logically requires an immediate follow-up 'execute_powershell' action. For example, if you run a command to check for a file's existence and the next logical step is to immediately create it if it doesn't exist, you might skip summarizing the 'file not found' output and proceed directly to the creation command.
 
-Always consider the overall user goal implied by the entire conversation history, especially when deciding on follow-up actions after a command execution. If a task requires multiple commands, plan and execute them one by one, using the output of the previous command to inform the next.
-When generating PowerShell commands, aim for single, complete, and executable commands. Do not provide explanations or commentary within the COMMAND: field itself.";
+General Guidelines:
+- Always consider the overall user goal implied by the entire conversation history.
+- When generating PowerShell commands, aim for single, complete, and executable commands. Do not provide explanations or commentary within the COMMAND: field itself.
+- If a command fails, analyze the error message in the 'SystemExecutionResult' to decide if you can recover by trying a different command, modifying the command, or if you need to 'speak' to the user for clarification or 'error' out.
+";
 
             var geminiRequest = new GeminiGenerateContentRequest
             {
@@ -106,36 +124,66 @@ When generating PowerShell commands, aim for single, complete, and executable co
                         var filteredLines = rawLines.Where(line => !line.TrimStart().StartsWith("Thinking:", StringComparison.OrdinalIgnoreCase)).ToList();
                         var processedAiRawText = string.Join("\n", filteredLines);
 
-                        // Basic parsing logic uses the processed text
                         var lines = processedAiRawText.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-                        string actionLine = lines.FirstOrDefault(l => l.StartsWith("ACTION:"))?.Substring("ACTION:".Length).Trim().ToLowerInvariant();
+                        string actionLine = lines.FirstOrDefault(l => l.StartsWith("ACTION:", StringComparison.OrdinalIgnoreCase))?.Substring("ACTION:".Length).Trim().ToLowerInvariant();
 
-                        agentResponse.ActionType = actionLine;
-
-                        switch (actionLine)
+                        if (string.IsNullOrWhiteSpace(actionLine))
                         {
-                            case "speak":
-                                agentResponse.TextResponse = lines.FirstOrDefault(l => l.StartsWith("TEXT:"))?.Substring("TEXT:".Length).Trim() ?? aiRawText;
-                                break;
-                            case "execute_powershell":
-                                agentResponse.PowerShellCommand = lines.FirstOrDefault(l => l.StartsWith("COMMAND:"))?.Substring("COMMAND:".Length).Trim();
-                                agentResponse.Reasoning = lines.FirstOrDefault(l => l.StartsWith("REASON:"))?.Substring("REASON:".Length).Trim();
-                                if (string.IsNullOrWhiteSpace(agentResponse.PowerShellCommand))
-                                {
-                                    agentResponse.ActionType = "error"; // Demote to error if command is missing
-                                    agentResponse.Error = "AI chose to execute a command but the command was missing in the response.";
-                                    agentResponse.TextResponse = aiRawText; // Provide raw text for debugging
-                                }
-                                break;
-                            case "error":
-                                agentResponse.TextResponse = lines.FirstOrDefault(l => l.StartsWith("TEXT:"))?.Substring("TEXT:".Length).Trim() ?? aiRawText;
-                                agentResponse.Error = agentResponse.TextResponse; // Use TextResponse as Error detail
-                                break;
-                            default:
-                                agentResponse.ActionType = "error"; // Or treat as "speak" with raw text
-                                agentResponse.Error = $"AI response format was unexpected. Received raw text: {aiRawText.Substring(0, Math.Min(aiRawText.Length, 100))}";
-                                agentResponse.TextResponse = aiRawText;
-                                break;
+                            if (!string.IsNullOrWhiteSpace(processedAiRawText))
+                            {
+                                // No ACTION: found, but there's text. Treat as implicit speak.
+                                agentResponse.ActionType = "speak";
+                                agentResponse.TextResponse = processedAiRawText.Trim(); // Use the fully processed text
+                            }
+                            else
+                            {
+                                // No ACTION: and no text, this is genuinely an empty/malformed response from AI.
+                                agentResponse.ActionType = "error";
+                                agentResponse.Error = "AI returned an empty or malformed response text after filtering.";
+                                // agentResponse.TextResponse = aiRawText; // original aiRawText might be useful here for debugging
+                            }
+                        }
+                        else // An ACTION: line was found
+                        {
+                            agentResponse.ActionType = actionLine;
+                            switch (actionLine)
+                            {
+                                case "speak":
+                                    // Ensure TEXT: line is preferred, but fall back to the whole processed text if TEXT: is missing
+                                    var speakTextLine = lines.FirstOrDefault(l => l.StartsWith("TEXT:", StringComparison.OrdinalIgnoreCase))?.Substring("TEXT:".Length).Trim();
+                                    agentResponse.TextResponse = !string.IsNullOrWhiteSpace(speakTextLine) ? speakTextLine : processedAiRawText.Trim();
+                                    // If actionLine was "speak" but processedAiRawText (after filtering "Thinking:") ONLY contained "ACTION: speak" and nothing else,
+                                    // then speakTextLine would be null, and processedAiRawText.Trim() would be "ACTION: speak".
+                                    // This needs to be handled: if the text is just the action line itself, it should be considered empty.
+                                    if (agentResponse.TextResponse.Equals($"ACTION: {actionLine}", StringComparison.OrdinalIgnoreCase)) {
+                                         agentResponse.TextResponse = $"AI initiated 'speak' action but provided no subsequent TEXT: content.";
+                                    }
+                                    break;
+                                case "execute_powershell":
+                                    agentResponse.PowerShellCommand = lines.FirstOrDefault(l => l.StartsWith("COMMAND:", StringComparison.OrdinalIgnoreCase))?.Substring("COMMAND:".Length).Trim();
+                                    agentResponse.Reasoning = lines.FirstOrDefault(l => l.StartsWith("REASON:", StringComparison.OrdinalIgnoreCase))?.Substring("REASON:".Length).Trim();
+                                    if (string.IsNullOrWhiteSpace(agentResponse.PowerShellCommand))
+                                    {
+                                        agentResponse.ActionType = "error";
+                                        agentResponse.Error = "AI chose to execute a command but the command was missing in the response.";
+                                        agentResponse.TextResponse = processedAiRawText; // Provide processed text for debugging
+                                    }
+                                    break;
+                                case "error":
+                                    var errorTextLine = lines.FirstOrDefault(l => l.StartsWith("TEXT:", StringComparison.OrdinalIgnoreCase))?.Substring("TEXT:".Length).Trim();
+                                    agentResponse.TextResponse = !string.IsNullOrWhiteSpace(errorTextLine) ? errorTextLine : processedAiRawText.Trim();
+                                    // Similar to speak, if only "ACTION: error" was present.
+                                     if (agentResponse.TextResponse.Equals($"ACTION: {actionLine}", StringComparison.OrdinalIgnoreCase)) {
+                                         agentResponse.TextResponse = $"AI initiated 'error' action but provided no subsequent TEXT: content.";
+                                    }
+                                    agentResponse.Error = agentResponse.TextResponse;
+                                    break;
+                                default: // Unknown action type specified
+                                    agentResponse.ActionType = "error";
+                                    agentResponse.Error = $"AI specified an unknown action type: '{actionLine}'. Raw response: {processedAiRawText.Substring(0, Math.Min(processedAiRawText.Length, 100))}";
+                                    agentResponse.TextResponse = processedAiRawText;
+                                    break;
+                            }
                         }
                     }
                     return agentResponse;
