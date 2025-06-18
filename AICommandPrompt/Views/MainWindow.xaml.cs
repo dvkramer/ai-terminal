@@ -76,9 +76,9 @@ namespace AICommandPrompt.Views
                     if (currentViewModel != null)
                     {
                         // Check if the SendMessageCommand can be executed
-                        if (currentViewModel.SendMessageCommand.CanExecute(null)) // Pass null for parameter if command doesn't expect one
+                        if (currentViewModel.SendMessageCommand.CanExecute())
                         {
-                            currentViewModel.SendMessageCommand.Execute(null); // Pass null for parameter
+                            currentViewModel.SendMessageCommand.Execute();
                         }
                     }
                     // Mark the event as handled to prevent TextBox from processing Enter (i.e., inserting a newline)
