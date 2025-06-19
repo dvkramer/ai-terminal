@@ -33,7 +33,6 @@ namespace AICommandPrompt.ViewModels
 
         public ObservableCollection<ChatMessage> ChatMessages { get; } = new ObservableCollection<ChatMessage>();
 
-        public ICommand OpenSettingsCommand { get; }
         public DelegateCommand SendMessageCommand { get; }
 
         private readonly SettingsViewModel _settingsViewModel;
@@ -48,7 +47,6 @@ namespace AICommandPrompt.ViewModels
             var powerShellService = new PowerShellService();
             _agent = new Agent.Agent(geminiService, powerShellService);
 
-            OpenSettingsCommand = new DelegateCommand(OpenSettings);
             SendMessageCommand = new DelegateCommand(async () => await ExecuteSendMessageAsync(), CanExecuteSendMessage);
             // No need for ObservesProperty if manually calling RaiseCanExecuteChanged in CurrentInputMessage setter and IsAgentProcessing setter
 
@@ -62,16 +60,39 @@ namespace AICommandPrompt.ViewModels
             if (!CanExecuteSendMessage()) return;
 
             var userMessage = new ChatMessage(CurrentInputMessage, MessageSender.User);
-            ChatMessages.Add(userMessage);
-            string messageToProcess = CurrentInputMessage;
-            CurrentInputMessage = string.Empty;
+            // Add user message to chat BEFORE clearing CurrentInputMessage
+            Application.Current.Dispatcher.Invoke(() => ChatMessages.Add(userMessage));
 
+            string messageToProcess = CurrentInputMessage; // Capture message before clearing
+            // CurrentInputMessage = string.Empty; // Clear input AFTER potential /api command processing or before agent call
+
+            if (messageToProcess.Trim().StartsWith("/api ", StringComparison.OrdinalIgnoreCase))
+            {
+                CurrentInputMessage = string.Empty; // Clear input now as we are handling the /api command
+                string extractedKey = messageToProcess.Trim().Substring("/api ".Length).Trim();
+                bool success = _settingsViewModel.UpdateApiKey(extractedKey);
+                string feedbackText = success ? "API Key updated successfully." : $"Failed to update API Key: {_settingsViewModel.ErrorMessage}";
+                var displayType = success ? MessageDisplayType.AIStatus : MessageDisplayType.ErrorText;
+                var statusMessage = new ChatMessage(feedbackText, MessageSender.AI, displayType);
+
+                Application.Current.Dispatcher.Invoke(() => ChatMessages.Add(statusMessage));
+
+                if(success) // Only update agent's key if ViewModel update was successful
+                {
+                    _agent.SetApiKey(_settingsViewModel.ApiKey); // _settingsViewModel.ApiKey would have been updated by UpdateApiKey
+                }
+                // No change to _isAgentProcessing or SendMessageCommand.RaiseCanExecuteChanged() as we return immediately
+                return;
+            }
+
+            // Normal message processing if not an /api command
             _isAgentProcessing = true;
             SendMessageCommand.RaiseCanExecuteChanged();
+            CurrentInputMessage = string.Empty; // Clear input before long-running agent call
 
             try
             {
-                _agent.SetApiKey(_settingsViewModel.ApiKey);
+                _agent.SetApiKey(_settingsViewModel.ApiKey); // Agent gets current key before processing
 
                 // Agent now uses its own internal history, which it updates with userMessage
                 List<ChatMessage> aiResponses = await _agent.ProcessUserMessageAsync(userMessage);
@@ -99,40 +120,6 @@ namespace AICommandPrompt.ViewModels
             }
         }
 
-        private void OpenSettings()
-        {
-            var settingsDialogViewModel = new SettingsViewModel();
-            var settingsView = new SettingsView
-            {
-                DataContext = settingsDialogViewModel
-            };
-
-            var dialogWindow = new Window
-            {
-                Title = "Settings - AI Command Prompt",
-                Content = settingsView,
-                Width = 450,
-                Height = 200,
-                SizeToContent = SizeToContent.Height,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Owner = Application.Current?.MainWindow,
-                ShowInTaskbar = false,
-                ResizeMode = ResizeMode.NoResize
-            };
-
-            settingsDialogViewModel.CloseDialogRequested += (dialogResult) =>
-            {
-                dialogWindow.DialogResult = dialogResult;
-                dialogWindow.Close();
-
-                if (dialogResult == true)
-                {
-                    _settingsViewModel.ApiKey = settingsDialogViewModel.ApiKey;
-                    // Update the agent's API key immediately if settings are changed
-                    _agent.SetApiKey(_settingsViewModel.ApiKey);
-                }
-            };
-            dialogWindow.ShowDialog();
-        }
+        // OpenSettings method removed
     }
 }

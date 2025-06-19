@@ -13,14 +13,6 @@
             <RowDefinition Height="Auto" /> <!-- Input Area -->
         </Grid.RowDefinitions>
 
-        <!-- Top Bar for Settings -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
-            <Button x:Name="SettingsButton"
-                    Content="Settings"
-                    Command="{Binding OpenSettingsCommand}"
-                    Width="80" Height="30"/>
-        </StackPanel>
-
         <!-- Chat History Display -->
         <ScrollViewer x:Name="ChatScrollViewer" Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="5">
             <ItemsControl x:Name="ChatHistoryListBox" ItemsSource="{Binding ChatMessages}">

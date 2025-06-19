@@ -151,28 +151,50 @@ namespace AICommandPrompt.Agent
                             goto endLoop; // Exit loop
                         }
                         // Loop continues: output is now part of currentProcessingHistory for the next GetAgentActionAsync call
-                        break;
+                        break; // Breaks switch, continues while loop
 
-                    case "error": // Explicit error action from Gemini's reasoning
+                    case "error_malformed_response":
+                        // This case is specifically for when GeminiService returns ActionType="error_malformed_response"
+                        // and Error="AI_MALFORMED_EMPTY_RESPONSE", indicating the AI's response was unusable.
+                        // geminiDecision.TextResponse here contains the original aiRawText from GeminiService.
+
+                        var uiMalformedMsg = new ChatMessage($"AI response was malformed or empty. The AI will attempt to retry. Original raw response: {geminiDecision.TextResponse}", MessageSender.AI, MessageDisplayType.ErrorText);
+                        agentResponsesForUi.Add(uiMalformedMsg);
+                        _internalConversationHistory.Add(uiMalformedMsg); // Log this to internal history for completeness.
+                        currentProcessingHistory.Add(uiMalformedMsg); // Add to current processing history for AI's context for retry
+
+                        var aiFeedbackMsg = new ChatMessage("SystemFeedback: Your previous response was empty or malformed. This is a critical issue. Ensure your *very next* response strictly adheres to the required format, starting with ACTION: on the first line, followed by necessary fields like TEXT:, COMMAND:, or REASON:. Do not include any other conversational text or apologies before the ACTION: line.", MessageSender.AI, MessageDisplayType.AIStatus);
+                        _internalConversationHistory.Add(aiFeedbackMsg);
+                        currentProcessingHistory.Add(aiFeedbackMsg); // Add to current processing history for AI's next attempt
+
+                        if (currentIteration >= maxIterations) {
+                            var maxIterationErrorMsg = new ChatMessage("Reached max automated steps after AI response error. AI failed to provide a valid response. Please provide further instructions or try a different approach.", MessageSender.AI, MessageDisplayType.ErrorText);
+                            agentResponsesForUi.Add(maxIterationErrorMsg);
+                            _internalConversationHistory.Add(maxIterationErrorMsg);
+                            goto endLoop; // Exit loop if max iterations reached
+                        }
+                        break; // Breaks switch, continues while loop to let AI retry
+
+                    case "error": // For other errors explicitly decided by the AI in its response, or other service errors not caught by the initial check.
                          string geminiErrorText = string.IsNullOrWhiteSpace(geminiDecision.TextResponse) ? geminiDecision.Error : geminiDecision.TextResponse;
                          if (string.IsNullOrWhiteSpace(geminiErrorText)) geminiErrorText = "AI reported an unspecified error.";
                          var geminiActionErrorMsg = new ChatMessage(geminiErrorText, MessageSender.AI, MessageDisplayType.ErrorText);
                          agentResponsesForUi.Add(geminiActionErrorMsg);
                          _internalConversationHistory.Add(geminiActionErrorMsg);
-                         // currentProcessingHistory.Add(geminiActionErrorMsg);
-                         goto endLoop; // Exit loop on error
+                         // currentProcessingHistory.Add(geminiActionErrorMsg); // No need to add to current processing, loop terminates
+                         goto endLoop; // Exit loop on general AI error
 
-                    default: // Includes unknown action types or if ActionType is null
-                        string unknownActionErrorText = $"AI returned an unknown or unspecified action type ('{geminiDecision.ActionType}').";
-                        if (!string.IsNullOrWhiteSpace(geminiDecision.TextResponse))
-                             unknownActionErrorText += $" AI Response: {geminiDecision.TextResponse}";
-                        else if (!string.IsNullOrWhiteSpace(geminiDecision.Error))
-                             unknownActionErrorText += $" AI Error: {geminiDecision.Error}";
+                    default: // Includes unknown action types or if ActionType is null after GeminiService processing
+                        string unknownActionErrorText = $"AI system returned an unknown or unspecified action type ('{geminiDecision.ActionType}').";
+                        if (!string.IsNullOrWhiteSpace(geminiDecision.TextResponse)) // This might be the original aiRawText if parsing failed at GeminiService
+                             unknownActionErrorText += $" AI Response content: {geminiDecision.TextResponse}";
+                        else if (!string.IsNullOrWhiteSpace(geminiDecision.Error)) // This might be an error code like AI_MALFORMED_EMPTY_RESPONSE if it somehow fell through
+                             unknownActionErrorText += $" Details: {geminiDecision.Error}";
 
                         var unknownActionMsg = new ChatMessage(unknownActionErrorText, MessageSender.AI, MessageDisplayType.ErrorText);
                         agentResponsesForUi.Add(unknownActionMsg);
                         _internalConversationHistory.Add(unknownActionMsg);
-                        // currentProcessingHistory.Add(unknownActionMsg);
+                        // currentProcessingHistory.Add(unknownActionMsg); // No need to add to current processing, loop terminates
                         goto endLoop; // Exit loop
                 }
             }
