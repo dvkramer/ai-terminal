@@ -6,7 +6,7 @@
         prism:ViewModelLocator.AutoWireViewModel="True"
         Title="{Binding Title}" Height="600" Width="800"
         MinWidth="400" MinHeight="300">
-    <Grid Margin="5">
+    <Grid Margin="5" FontSize="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" /> <!-- Menu/Settings Row -->
             <RowDefinition Height="*" />    <!-- Chat History -->
@@ -44,7 +44,7 @@
                             <StackPanel MaxWidth="600"> <!-- Limit message width -->
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding Sender}" FontWeight="Bold"/>
-                                    <TextBlock Text="{Binding Timestamp, StringFormat=' - HH:mm:ss'}" FontSize="10" Foreground="Gray" Margin="5,0,0,0"/>
+                                    <TextBlock Text="{Binding Timestamp, StringFormat=' - HH:mm:ss'}" FontSize="15" Foreground="Gray" Margin="5,0,0,0"/>
                                 </StackPanel>
                                 <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,3,0,0">
                                     <TextBlock.Style>
