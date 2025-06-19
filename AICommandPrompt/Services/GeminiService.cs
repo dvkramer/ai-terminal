@@ -17,7 +17,7 @@ namespace AICommandPrompt.Services
     {
         private static readonly HttpClient HttpClient = new HttpClient();
         private const string GeminiApiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/models/";
-        private const string DefaultModelName = "gemini-1.5-flash-latest"; // Using "latest" for flash model
+        private const string DefaultModelName = "gemini-2.5-flash"; // Using "latest" for flash model
 
         public async Task<AgentActionResponse> GetAgentActionAsync(List<ChatMessage> conversationHistory, string apiKey)
         {
@@ -151,19 +151,56 @@ General Guidelines:
                             switch (actionLine)
                             {
                                 case "speak":
-                                    // Ensure TEXT: line is preferred, but fall back to the whole processed text if TEXT: is missing
-                                    var speakTextLine = lines.FirstOrDefault(l => l.StartsWith("TEXT:", StringComparison.OrdinalIgnoreCase))?.Substring("TEXT:".Length).Trim();
-                                    agentResponse.TextResponse = !string.IsNullOrWhiteSpace(speakTextLine) ? speakTextLine : processedAiRawText.Trim();
-                                    // If actionLine was "speak" but processedAiRawText (after filtering "Thinking:") ONLY contained "ACTION: speak" and nothing else,
-                                    // then speakTextLine would be null, and processedAiRawText.Trim() would be "ACTION: speak".
-                                    // This needs to be handled: if the text is just the action line itself, it should be considered empty.
-                                    if (agentResponse.TextResponse.Equals($"ACTION: {actionLine}", StringComparison.OrdinalIgnoreCase)) {
-                                         agentResponse.TextResponse = $"AI initiated 'speak' action but provided no subsequent TEXT: content.";
+                                    {
+                                        int textLineStartIndex = -1;
+                                        for (int i = 0; i < lines.Length; i++)
+                                        {
+                                            if (lines[i].TrimStart().StartsWith("TEXT:", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                textLineStartIndex = i;
+                                                break;
+                                            }
+                                        }
+
+                                        if (textLineStartIndex != -1)
+                                        {
+                                            var sb = new StringBuilder();
+                                            // Extract text from the "TEXT:" line itself
+                                            string firstPartOfText = lines[textLineStartIndex].Substring(lines[textLineStartIndex].IndexOf("TEXT:", StringComparison.OrdinalIgnoreCase) + "TEXT:".Length).TrimStart();
+                                            sb.Append(firstPartOfText); // Append first part, then newlines for subsequent full lines
+
+                                            // Append subsequent lines until another major keyword or end of lines
+                                            for (int i = textLineStartIndex + 1; i < lines.Length; i++)
+                                            {
+                                                string currentLineTrimmed = lines[i].TrimStart();
+                                                if (currentLineTrimmed.StartsWith("ACTION:", StringComparison.OrdinalIgnoreCase) ||
+                                                    currentLineTrimmed.StartsWith("COMMAND:", StringComparison.OrdinalIgnoreCase) ||
+                                                    currentLineTrimmed.StartsWith("REASON:", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    break; // Stop if another major keyword is found
+                                                }
+                                                // Only append if it's not the first line of text to ensure correct newline placement
+                                                if (sb.Length > 0 || !string.IsNullOrWhiteSpace(firstPartOfText) ) sb.AppendLine();
+                                                sb.Append(lines[i]);
+                                            }
+                                            agentResponse.TextResponse = sb.ToString().TrimEnd('\r', '\n');
+                                        }
+                                        else // No "TEXT:" line found, but ACTION was "speak"
+                                        {
+                                            agentResponse.TextResponse = processedAiRawText.Trim();
+                                        }
+
+                                        // If TextResponse ended up being just "ACTION: speak" (e.g. implicit speak fell through or TEXT: was empty)
+                                        if (agentResponse.TextResponse.Equals($"ACTION: {actionLine}", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(agentResponse.TextResponse))
+                                        {
+                                            agentResponse.TextResponse = $"AI initiated 'speak' action but provided no subsequent TEXT: content.";
+                                        }
                                     }
                                     break;
                                 case "execute_powershell":
                                     agentResponse.PowerShellCommand = lines.FirstOrDefault(l => l.StartsWith("COMMAND:", StringComparison.OrdinalIgnoreCase))?.Substring("COMMAND:".Length).Trim();
                                     agentResponse.Reasoning = lines.FirstOrDefault(l => l.StartsWith("REASON:", StringComparison.OrdinalIgnoreCase))?.Substring("REASON:".Length).Trim();
+                                    // Multi-line for REASON (similar to TEXT) could be added if needed, but current prompt implies brief.
                                     if (string.IsNullOrWhiteSpace(agentResponse.PowerShellCommand))
                                     {
                                         agentResponse.ActionType = "error";
@@ -172,13 +209,49 @@ General Guidelines:
                                     }
                                     break;
                                 case "error":
-                                    var errorTextLine = lines.FirstOrDefault(l => l.StartsWith("TEXT:", StringComparison.OrdinalIgnoreCase))?.Substring("TEXT:".Length).Trim();
-                                    agentResponse.TextResponse = !string.IsNullOrWhiteSpace(errorTextLine) ? errorTextLine : processedAiRawText.Trim();
-                                    // Similar to speak, if only "ACTION: error" was present.
-                                     if (agentResponse.TextResponse.Equals($"ACTION: {actionLine}", StringComparison.OrdinalIgnoreCase)) {
-                                         agentResponse.TextResponse = $"AI initiated 'error' action but provided no subsequent TEXT: content.";
+                                    {
+                                        int textLineStartIndex = -1;
+                                        for (int i = 0; i < lines.Length; i++)
+                                        {
+                                            if (lines[i].TrimStart().StartsWith("TEXT:", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                textLineStartIndex = i;
+                                                break;
+                                            }
+                                        }
+
+                                        if (textLineStartIndex != -1)
+                                        {
+                                            var sb = new StringBuilder();
+                                            string firstPartOfText = lines[textLineStartIndex].Substring(lines[textLineStartIndex].IndexOf("TEXT:", StringComparison.OrdinalIgnoreCase) + "TEXT:".Length).TrimStart();
+                                            sb.Append(firstPartOfText);
+
+                                            for (int i = textLineStartIndex + 1; i < lines.Length; i++)
+                                            {
+                                                string currentLineTrimmed = lines[i].TrimStart();
+                                                if (currentLineTrimmed.StartsWith("ACTION:", StringComparison.OrdinalIgnoreCase) ||
+                                                    currentLineTrimmed.StartsWith("COMMAND:", StringComparison.OrdinalIgnoreCase) ||
+                                                    currentLineTrimmed.StartsWith("REASON:", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    break;
+                                                }
+                                                if (sb.Length > 0 || !string.IsNullOrWhiteSpace(firstPartOfText) ) sb.AppendLine();
+                                                sb.Append(lines[i]);
+                                            }
+                                            agentResponse.TextResponse = sb.ToString().TrimEnd('\r', '\n');
+                                        }
+                                        else // No "TEXT:" line found, but ACTION was "error"
+                                        {
+                                            agentResponse.TextResponse = processedAiRawText.Trim();
+                                        }
+
+                                        // If TextResponse ended up being just "ACTION: error" or empty
+                                        if (agentResponse.TextResponse.Equals($"ACTION: {actionLine}", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(agentResponse.TextResponse))
+                                        {
+                                            agentResponse.TextResponse = $"AI initiated 'error' action but provided no subsequent TEXT: content.";
+                                        }
+                                        agentResponse.Error = agentResponse.TextResponse;
                                     }
-                                    agentResponse.Error = agentResponse.TextResponse;
                                     break;
                                 default: // Unknown action type specified
                                     agentResponse.ActionType = "error";
