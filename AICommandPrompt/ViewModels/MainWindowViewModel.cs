@@ -33,7 +33,6 @@ namespace AICommandPrompt.ViewModels
 
         public ObservableCollection<ChatMessage> ChatMessages { get; } = new ObservableCollection<ChatMessage>();
 
-        public ICommand OpenSettingsCommand { get; }
         public DelegateCommand SendMessageCommand { get; }
 
         private readonly SettingsViewModel _settingsViewModel;
@@ -48,7 +47,6 @@ namespace AICommandPrompt.ViewModels
             var powerShellService = new PowerShellService();
             _agent = new Agent.Agent(geminiService, powerShellService);
 
-            OpenSettingsCommand = new DelegateCommand(OpenSettings);
             SendMessageCommand = new DelegateCommand(async () => await ExecuteSendMessageAsync(), CanExecuteSendMessage);
             // No need for ObservesProperty if manually calling RaiseCanExecuteChanged in CurrentInputMessage setter and IsAgentProcessing setter
 
@@ -122,40 +120,6 @@ namespace AICommandPrompt.ViewModels
             }
         }
 
-        private void OpenSettings()
-        {
-            var settingsDialogViewModel = new SettingsViewModel();
-            var settingsView = new SettingsView
-            {
-                DataContext = settingsDialogViewModel
-            };
-
-            var dialogWindow = new Window
-            {
-                Title = "Settings - AI Command Prompt",
-                Content = settingsView,
-                Width = 450,
-                Height = 200,
-                SizeToContent = SizeToContent.Height,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Owner = Application.Current?.MainWindow,
-                ShowInTaskbar = false,
-                ResizeMode = ResizeMode.NoResize
-            };
-
-            settingsDialogViewModel.CloseDialogRequested += (dialogResult) =>
-            {
-                dialogWindow.DialogResult = dialogResult;
-                dialogWindow.Close();
-
-                if (dialogResult == true)
-                {
-                    _settingsViewModel.ApiKey = settingsDialogViewModel.ApiKey;
-                    // Update the agent's API key immediately if settings are changed
-                    _agent.SetApiKey(_settingsViewModel.ApiKey);
-                }
-            };
-            dialogWindow.ShowDialog();
-        }
+        // OpenSettings method removed
     }
 }
