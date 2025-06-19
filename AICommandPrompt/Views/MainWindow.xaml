@@ -44,7 +44,7 @@
                             <StackPanel MaxWidth="600"> <!-- Limit message width -->
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding Sender}" FontWeight="Bold"/>
-                                    <TextBlock Text="{Binding Timestamp, StringFormat=' - HH:mm:ss'}" FontSize="10" Foreground="Gray" Margin="5,0,0,0"/>
+                                    <TextBlock Text="{Binding Timestamp, StringFormat=' - HH:mm:ss'}" Foreground="Gray" Margin="5,0,0,0"/>
                                 </StackPanel>
                                 <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,3,0,0">
                                     <TextBlock.Style>
