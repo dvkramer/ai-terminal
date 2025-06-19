@@ -25,11 +25,11 @@ namespace AICommandPrompt.ViewModels
             set => SetProperty(ref _errorMessage, value);
         }
 
-        public ICommand SaveCommand { get; }
-        public ICommand CancelCommand { get; }
-
-        public delegate void RequestCloseDialog(bool? dialogResult);
-        public event RequestCloseDialog CloseDialogRequested;
+        // UI-specific commands and events are removed.
+        // public ICommand SaveCommand { get; }
+        // public ICommand CancelCommand { get; }
+        // public delegate void RequestCloseDialog(bool? dialogResult);
+        // public event RequestCloseDialog CloseDialogRequested;
 
         private static readonly string AppName = "AICommandPrompt";
         private static readonly string SettingsFileName = "settings.json";
@@ -40,8 +40,7 @@ namespace AICommandPrompt.ViewModels
         public SettingsViewModel()
         {
             InitializeSettingsPath();
-            SaveCommand = new DelegateCommand(OnSave, CanSave).ObservesProperty(() => ApiKey);
-            CancelCommand = new DelegateCommand(OnCancel);
+            // SaveCommand and CancelCommand initializations removed.
             LoadApiKey();
         }
 
@@ -94,11 +93,11 @@ namespace AICommandPrompt.ViewModels
             }
         }
 
-        private void OnSave()
+        public bool UpdateApiKey(string newApiKey)
         {
             ErrorMessage = null; // Clear previous errors
 
-            if (string.IsNullOrWhiteSpace(ApiKey))
+            if (string.IsNullOrWhiteSpace(newApiKey))
             {
                 try
                 {
@@ -106,49 +105,40 @@ namespace AICommandPrompt.ViewModels
                     {
                         File.Delete(_settingsFilePath);
                     }
-                    CloseDialogRequested?.Invoke(true);
-                    return;
+                    ApiKey = string.Empty; // Update in-memory API key
+                    return true;
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Error deleting settings file: {ex.Message}");
                     ErrorMessage = $"Error clearing API key: {ex.Message}";
-                    // Not closing dialog on error here, user can retry or cancel
-                    return;
+                    return false;
                 }
             }
 
             try
             {
-                byte[] dataToEncrypt = Encoding.UTF8.GetBytes(ApiKey);
+                byte[] dataToEncrypt = Encoding.UTF8.GetBytes(newApiKey);
                 byte[] encryptedData = ProtectedData.Protect(dataToEncrypt, Entropy, DataProtectionScope.CurrentUser);
                 string encryptedBase64 = Convert.ToBase64String(encryptedData);
 
                 var settings = new SettingsData { EncryptedApiKey = encryptedBase64 };
                 string json = JsonSerializer.Serialize(settings);
 
-                Directory.CreateDirectory(Path.GetDirectoryName(_settingsFilePath));
+                Directory.CreateDirectory(Path.GetDirectoryName(_settingsFilePath)); // Ensure directory exists
                 File.WriteAllText(_settingsFilePath, json);
 
-                CloseDialogRequested?.Invoke(true);
+                ApiKey = newApiKey; // Update in-memory API key
+                return true;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error saving API key: {ex.Message}");
                 ErrorMessage = $"Error saving API key: {ex.Message}";
-                // Not closing dialog on error, user can see the message, retry or cancel.
-                // CloseDialogRequested?.Invoke(false); // This would close it, but let's keep it open on save error.
+                return false;
             }
         }
 
-        private bool CanSave()
-        {
-            return true;
-        }
-
-        private void OnCancel()
-        {
-            CloseDialogRequested?.Invoke(false);
-        }
+        // OnSave, CanSave, OnCancel methods are removed.
     }
 }

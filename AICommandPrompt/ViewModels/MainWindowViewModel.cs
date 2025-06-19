@@ -62,16 +62,39 @@ namespace AICommandPrompt.ViewModels
             if (!CanExecuteSendMessage()) return;
 
             var userMessage = new ChatMessage(CurrentInputMessage, MessageSender.User);
-            ChatMessages.Add(userMessage);
-            string messageToProcess = CurrentInputMessage;
-            CurrentInputMessage = string.Empty;
+            // Add user message to chat BEFORE clearing CurrentInputMessage
+            Application.Current.Dispatcher.Invoke(() => ChatMessages.Add(userMessage));
 
+            string messageToProcess = CurrentInputMessage; // Capture message before clearing
+            // CurrentInputMessage = string.Empty; // Clear input AFTER potential /api command processing or before agent call
+
+            if (messageToProcess.Trim().StartsWith("/api ", StringComparison.OrdinalIgnoreCase))
+            {
+                CurrentInputMessage = string.Empty; // Clear input now as we are handling the /api command
+                string extractedKey = messageToProcess.Trim().Substring("/api ".Length).Trim();
+                bool success = _settingsViewModel.UpdateApiKey(extractedKey);
+                string feedbackText = success ? "API Key updated successfully." : $"Failed to update API Key: {_settingsViewModel.ErrorMessage}";
+                var displayType = success ? MessageDisplayType.AIStatus : MessageDisplayType.ErrorText;
+                var statusMessage = new ChatMessage(feedbackText, MessageSender.AI, displayType);
+
+                Application.Current.Dispatcher.Invoke(() => ChatMessages.Add(statusMessage));
+
+                if(success) // Only update agent's key if ViewModel update was successful
+                {
+                    _agent.SetApiKey(_settingsViewModel.ApiKey); // _settingsViewModel.ApiKey would have been updated by UpdateApiKey
+                }
+                // No change to _isAgentProcessing or SendMessageCommand.RaiseCanExecuteChanged() as we return immediately
+                return;
+            }
+
+            // Normal message processing if not an /api command
             _isAgentProcessing = true;
             SendMessageCommand.RaiseCanExecuteChanged();
+            CurrentInputMessage = string.Empty; // Clear input before long-running agent call
 
             try
             {
-                _agent.SetApiKey(_settingsViewModel.ApiKey);
+                _agent.SetApiKey(_settingsViewModel.ApiKey); // Agent gets current key before processing
 
                 // Agent now uses its own internal history, which it updates with userMessage
                 List<ChatMessage> aiResponses = await _agent.ProcessUserMessageAsync(userMessage);
