@@ -34,6 +34,7 @@ namespace AICommandPrompt.ViewModels
         public ObservableCollection<ChatMessage> ChatMessages { get; } = new ObservableCollection<ChatMessage>();
 
         public DelegateCommand SendMessageCommand { get; }
+        public ICommand WindowLoadedCommand { get; }
 
         private readonly SettingsViewModel _settingsViewModel;
         private readonly Agent.Agent _agent;
@@ -48,9 +49,23 @@ namespace AICommandPrompt.ViewModels
             _agent = new Agent.Agent(geminiService, powerShellService);
 
             SendMessageCommand = new DelegateCommand(async () => await ExecuteSendMessageAsync(), CanExecuteSendMessage);
+            WindowLoadedCommand = new DelegateCommand(async () => await OnWindowLoadedAsync());
             // No need for ObservesProperty if manually calling RaiseCanExecuteChanged in CurrentInputMessage setter and IsAgentProcessing setter
 
             ChatMessages.Add(new ChatMessage("Welcome! Type your command request below and press Send.", MessageSender.AI, MessageDisplayType.AIStatus));
+        }
+
+        private async Task OnWindowLoadedAsync()
+        {
+            await _settingsViewModel.LoadApiKeyAsync();
+            _agent.SetApiKey(_settingsViewModel.ApiKey);
+            if (string.IsNullOrEmpty(_settingsViewModel.ApiKey))
+            {
+                Application.Current.Dispatcher.Invoke(() => // Ensure UI updates are on the UI thread
+                {
+                    ChatMessages.Add(new ChatMessage("API Key not found. Please set it using /api <key>", MessageSender.AI, MessageDisplayType.AIStatus));
+                });
+            }
         }
 
         private bool CanExecuteSendMessage() => !string.IsNullOrWhiteSpace(CurrentInputMessage) && !_isAgentProcessing;

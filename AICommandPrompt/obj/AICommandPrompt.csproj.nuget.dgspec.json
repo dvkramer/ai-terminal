@@ -10,11 +10,11 @@
         "projectUniqueName": "/app/AICommandPrompt/AICommandPrompt.csproj",
         "projectName": "AICommandPrompt",
         "projectPath": "/app/AICommandPrompt/AICommandPrompt.csproj",
-        "packagesPath": "/home/swebot/.nuget/packages/",
+        "packagesPath": "/home/jules/.nuget/packages/",
         "outputPath": "/app/AICommandPrompt/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/home/swebot/.nuget/NuGet/NuGet.Config"
+          "/home/jules/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net6.0-windows"
@@ -38,6 +38,26 @@
         "net6.0-windows7.0": {
           "targetAlias": "net6.0-windows",
           "dependencies": {
+            "Microsoft.PowerShell.Commands.Diagnostics": {
+              "target": "Package",
+              "version": "[7.2.18, )"
+            },
+            "Microsoft.PowerShell.Commands.Management": {
+              "target": "Package",
+              "version": "[7.2.18, )"
+            },
+            "Microsoft.PowerShell.Commands.Utility": {
+              "target": "Package",
+              "version": "[7.2.18, )"
+            },
+            "Microsoft.PowerShell.ConsoleHost": {
+              "target": "Package",
+              "version": "[7.2.18, )"
+            },
+            "Microsoft.WSMan.Management": {
+              "target": "Package",
+              "version": "[7.2.18, )"
+            },
             "Prism.DryIoc": {
               "target": "Package",
               "version": "[8.1.97, )"
@@ -60,6 +80,18 @@
           "warn": true,
           "downloadDependencies": [
             {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[6.0.36, 6.0.36]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.linux-x64",
+              "version": "[6.0.36, 6.0.36]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[6.0.36, 6.0.36]"
+            },
+            {
               "name": "Microsoft.WindowsDesktop.App.Ref",
               "version": "[6.0.36, 6.0.36]"
             }
@@ -67,12 +99,9 @@
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
-            },
-            "Microsoft.WindowsDesktop.App.WPF": {
-              "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/6.0.428/RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.117/RuntimeIdentifierGraph.json"
         }
       }
     }
