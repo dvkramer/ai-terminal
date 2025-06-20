@@ -1,6 +1,6 @@
-# AI Command Prompt
+# AI Terminal
 
-AI Command Prompt is a Windows WPF application that provides a chat-based interface to an AI agent. This agent can understand your requests in natural language and execute corresponding PowerShell commands to automate tasks, answer questions, and assist you right from your desktop.
+AI Terminal is a Windows WPF application that provides a chat-based interface to an AI agent. This agent can understand your requests in natural language and execute corresponding PowerShell commands to automate tasks, answer questions, and assist you right from your desktop.
 
 ---
 
