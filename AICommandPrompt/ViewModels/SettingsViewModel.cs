@@ -55,7 +55,7 @@ namespace AICommandPrompt.ViewModels
             public string EncryptedApiKey { get; set; }
         }
 
-        private async Task LoadApiKeyAsync()
+        public async Task LoadApiKeyAsync()
         {
             ErrorMessage = null; // Clear previous errors
             if (File.Exists(_settingsFilePath))
