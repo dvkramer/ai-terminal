@@ -6,6 +6,16 @@
         prism:ViewModelLocator.AutoWireViewModel="True"
         Title="{Binding Title}" Height="600" Width="800"
         MinWidth="400" MinHeight="300">
+
+    <Window.InputBindings>
+        <KeyBinding Command="{Binding SendMessageCommand}" Key="Enter" />
+    </Window.InputBindings>
+    <prism:Interaction.Triggers>
+        <prism:EventTrigger EventName="Loaded">
+            <prism:InvokeCommandAction Command="{Binding WindowLoadedCommand}" />
+        </prism:EventTrigger>
+    </prism:Interaction.Triggers>
+
     <Grid Margin="5">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" /> <!-- Menu/Settings Row -->

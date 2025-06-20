@@ -5,6 +5,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows.Input;
 
 namespace AICommandPrompt.ViewModels
@@ -41,7 +42,6 @@ namespace AICommandPrompt.ViewModels
         {
             InitializeSettingsPath();
             // SaveCommand and CancelCommand initializations removed.
-            LoadApiKey();
         }
 
         private void InitializeSettingsPath()
@@ -55,14 +55,14 @@ namespace AICommandPrompt.ViewModels
             public string EncryptedApiKey { get; set; }
         }
 
-        private void LoadApiKey()
+        private async Task LoadApiKeyAsync()
         {
             ErrorMessage = null; // Clear previous errors
             if (File.Exists(_settingsFilePath))
             {
                 try
                 {
-                    string json = File.ReadAllText(_settingsFilePath);
+                    string json = await File.ReadAllTextAsync(_settingsFilePath);
                     if (string.IsNullOrWhiteSpace(json)) // Handle empty settings file
                     {
                         ApiKey = string.Empty;
