@@ -1,6 +1,8 @@
 # AI Terminal
 A Python desktop app that lets you control Windows with natural language. Ask the AI what you want to do, and it executes the right PowerShell commands automatically.
 
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/cef0904d-2535-42f5-9053-6a19aceefe95" />
+
 ## Features
 * **Natural Language to PowerShell:** Just ask what you want - the AI figures out the command
 * **Modern Dark UI:** Clean interface built with CustomTkinter
