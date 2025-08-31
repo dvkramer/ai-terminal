@@ -7,7 +7,11 @@ A Python desktop app that lets you control Windows with natural language. Ask th
 * **Autonomous Execution:** AI runs commands directly without asking permission
 * **Full Context:** Remembers conversation for multi-step tasks
 
-## Quick Start
+## Download
+
+Download the executable from the [Releases](../../releases) page.
+
+## For Tinkerers
 1. **Install Python 3.8+** from [python.org](https://www.python.org/downloads/)
 2. **Install packages:**
    ```bash
@@ -21,7 +25,7 @@ A Python desktop app that lets you control Windows with natural language. Ask th
 
 In the program, type ```/api your_api_key```
 
-Your API key will be saved to .env in the same directory as the executable.
+Your API key will be saved to .env in the same directory as the script.
 
 ## Usage Examples
 * `open my Steam library folder`
