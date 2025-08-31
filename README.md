@@ -13,14 +13,13 @@ A Python desktop app that lets you control Windows with natural language. Ask th
    ```bash
    pip install customtkinter google-genai python-dotenv
    ```
-3. **Create `.env` file** with your API key:
-   ```
-   GEMINI_API_KEY=your_key_here
-   ```
-4. **Run:**
+3. **Run:**
    ```bash
-   python powershell_agent.py
+   python agent.py
    ```
+4. **API Key**
+In the program, type ```/api your_api_key```
+Your API key will be saved to .env in the same directory as the executable.
 
 ## Usage Examples
 * `what is today's date?`
