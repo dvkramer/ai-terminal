@@ -1,66 +1,35 @@
-# AI Terminal
-
-AI Terminal is a Windows WPF application that provides a chat-based interface to an AI agent. This agent can understand your requests in natural language and execute corresponding PowerShell commands to automate tasks, answer questions, and assist you right from your desktop.
-
----
+# PowerShell Agent
+A Python desktop app that lets you control Windows with natural language. Ask the AI what you want to do, and it executes the right PowerShell commands automatically.
 
 ## Features
+* **Natural Language to PowerShell:** Just ask what you want - the AI figures out the command
+* **Modern Dark UI:** Clean interface built with CustomTkinter
+* **Autonomous Execution:** AI runs commands directly without asking permission
+* **Full Context:** Remembers conversation for multi-step tasks
 
-* **Natural Language to PowerShell:** Simply ask the AI what you want to do, and it will figure out the right PowerShell command to run.
-* **Conversational Interface:** A simple and intuitive chat window to interact with the AI agent.
-* **Context Aware:** The agent remembers the context of your conversation to handle multi-step tasks.
-* **Secure API Key Handling:** Your API key is stored securely on your local machine and is never sent in your prompts.
-* **Command and Output Logging:** See the exact commands the AI is executing and their full output, including errors.
+## Quick Start
+1. **Install Python 3.8+** from [python.org](https://www.python.org/downloads/)
+2. **Install packages:**
+   ```bash
+   pip install customtkinter google-genai python-dotenv
+   ```
+3. **Create `.env` file** with your API key:
+   ```
+   GEMINI_API_KEY=your_key_here
+   ```
+4. **Run:**
+   ```bash
+   python powershell_agent.py
+   ```
 
----
+## Usage Examples
+* `what is today's date?`
+* `list files on my desktop`
+* `create a folder called "My Project"`
+* `what's my IP address?`
+* `show running processes`
 
-## Getting Started
-
-Follow these instructions to get the application running on your local machine.
-
-### Prerequisites
-
-* **.NET 6.0 Desktop Runtime:** You must have the [.NET 6.0 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) installed.
-* **Gemini API Key:** You need an API key from [Google AI Studio](https://makersuite.google.com/app/apikey).
-
-### Installation & Running
-
-1.  Go to the [Releases page](https://github.com/dvkramer/ai-terminal/releases) of this repository.
-2.  Download the latest release zip file.
-3.  Unzip the folder to your desired location.
-4.  Run `AICommandPrompt.exe`.
-
-### Configuration
-
-Before the AI agent can work, you must provide it with your Gemini API key.
-
-1.  Open the application.
-2.  In the chat input box, type the following command, replacing `YOUR_API_KEY_HERE` with your actual key:
-    ```
-    /api YOUR_API_KEY_HERE
-    ```
-3.  Press Enter or click "Send". You will see a confirmation message that the key has been updated.
-
-> **Note:** This `/api` command is processed locally on your machine. Your API key is **not** sent to the AI model or exposed in any chat history that the model sees.
-
----
-
-## How to Use
-
-Once your API key is configured, you can start making requests. Just type what you want to do into the chat box.
-
-**Examples:**
-* `list all the text files on my desktop`
-* `create a new folder called "My Project" in my documents`
-* `what is my current IP address?`
-
-The AI will show you its thought process, the command it's about to execute, and then the output from that command.
-
----
+Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey).
 
 ## Built With
-
-* [.NET 6](https://dotnet.microsoft.com/)
-* [WPF (Windows Presentation Foundation)](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/)
-* [Prism Framework](https://prismlibrary.com/) for MVVM
-* [Google Gemini API](https://ai.google.dev/)
+Python • CustomTkinter • Google Gemini API • PowerShell
