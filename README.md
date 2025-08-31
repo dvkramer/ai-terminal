@@ -24,11 +24,10 @@ In the program, type ```/api your_api_key```
 Your API key will be saved to .env in the same directory as the executable.
 
 ## Usage Examples
-* `what is today's date?`
-* `list files on my desktop`
-* `create a folder called "My Project"`
+* `open my Steam library folder`
 * `what's my IP address?`
-* `show running processes`
+* `what's using all my RAM?`
+* `uninstall Google Chrome`
 
 Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey).
 
