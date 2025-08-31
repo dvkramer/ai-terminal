@@ -8,16 +8,8 @@ from dotenv import load_dotenv
 
 # --- Configuration ---
 load_dotenv()
-# Ensure you have your API key in a .env file as GEMINI_API_KEY="YOUR_API_KEY"
+# Try to get API key from .env file
 api_key = os.getenv("GEMINI_API_KEY")
-if not api_key:
-    # A simple GUI popup for the error is better than a crash
-    import tkinter as tk
-    from tkinter import messagebox
-    root = tk.Tk()
-    root.withdraw()
-    messagebox.showerror("Error", "GEMINI_API_KEY not found in .env file. Please create one.")
-    exit()
 
 # --- Core PowerShell Function & AI Tool Definition ---
 
@@ -82,13 +74,16 @@ class PowerShellAgentApp(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
-        # Configure the client and tools following the new API
-        self.client = genai.Client(api_key=api_key)
-        self.tools = types.Tool(function_declarations=[powershell_function_declaration])
-        self.config = types.GenerateContentConfig(
-            tools=[self.tools],
-            system_instruction="You are a powerful, autonomous Windows assistant. Your purpose is to directly help the user by executing PowerShell commands to accomplish their goals. When a user's request requires OS interaction, you must call the `run_powershell_script` function with the appropriate script. Be efficient and act directly. After executing a script, summarize the result for the user."
-        )
+        # Store API key and initialize client if available
+        self.api_key = api_key
+        self.client = None
+        self.tools = None
+        self.config = None
+        
+        if self.api_key:
+            self.initialize_ai()
+        else:
+            self.add_to_chat("System", "No API key found. Use '/api YOUR_KEY' to set your Gemini API key.")
 
         # Keep track of conversation history
         self.conversation_history = []
@@ -103,6 +98,69 @@ class PowerShellAgentApp(ctk.CTk):
         self.entry = ctk.CTkEntry(self, placeholder_text="Ask me to do anything on this system...")
         self.entry.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
         self.entry.bind("<Return>", self.send_message_event)
+    
+    def initialize_ai(self):
+        """Initialize the AI client and tools with the API key."""
+        try:
+            self.client = genai.Client(api_key=self.api_key)
+            self.tools = types.Tool(function_declarations=[powershell_function_declaration])
+            self.config = types.GenerateContentConfig(
+                tools=[self.tools],
+                system_instruction="You are a powerful, autonomous Windows assistant. Your purpose is to directly help the user by executing PowerShell commands to accomplish their goals. When a user's request requires OS interaction, you must call the `run_powershell_script` function with the appropriate script. Be efficient and act directly. After executing a script, summarize the result for the user."
+            )
+            self.conversation_history = []
+            return True
+        except Exception as e:
+            self.add_to_chat("System Error", f"Failed to initialize AI: {str(e)}")
+            return False
+    
+    def update_api_key(self, new_key: str):
+        """Update the API key and save it to .env file."""
+        self.api_key = new_key
+        
+        # Save to .env file
+        env_path = ".env"
+        env_content = f"GEMINI_API_KEY={new_key}\n"
+        
+        # If .env exists, update it; otherwise create it
+        if os.path.exists(env_path):
+            with open(env_path, 'r') as file:
+                lines = file.readlines()
+            
+            # Replace existing key or add new one
+            updated = False
+            for i, line in enumerate(lines):
+                if line.startswith("GEMINI_API_KEY="):
+                    lines[i] = env_content
+                    updated = True
+                    break
+            
+            if not updated:
+                lines.append(env_content)
+            
+            with open(env_path, 'w') as file:
+                file.writelines(lines)
+        else:
+            with open(env_path, 'w') as file:
+                file.write(env_content)
+        
+        # Initialize AI with new key
+        if self.initialize_ai():
+            self.add_to_chat("System", "API key updated successfully!")
+        else:
+            self.add_to_chat("System Error", "Failed to initialize AI with new key.")
+    
+    def handle_api_command(self, command: str) -> bool:
+        """Handle /api command to set API key. Returns True if handled."""
+        if command.startswith("/api "):
+            new_key = command[5:].strip()
+            if new_key:
+                self.update_api_key(new_key)
+                return True
+            else:
+                self.add_to_chat("System Error", "Please provide an API key: /api YOUR_KEY")
+                return True
+        return False
         
     def add_to_chat(self, role: str, text: str):
         """Helper to add text to the chat window safely from any thread."""
@@ -119,6 +177,15 @@ class PowerShellAgentApp(ctk.CTk):
             
         self.add_to_chat("You", prompt)
         self.entry.delete(0, "end")
+        
+        # Check for /api command
+        if self.handle_api_command(prompt):
+            return
+        
+        # Check if AI is initialized
+        if not self.client:
+            self.add_to_chat("System Error", "No API key set. Use '/api YOUR_KEY' to set your Gemini API key.")
+            return
         
         # Run the AI interaction in a separate thread to keep the UI responsive
         thread = threading.Thread(target=self.process_ai_interaction, args=(prompt,))
@@ -191,7 +258,22 @@ class PowerShellAgentApp(ctk.CTk):
                 self.add_to_chat("System Error", "No text response received from model")
 
         except Exception as e:
-            self.add_to_chat("System Error", f"An unexpected error occurred: {str(e)}")
+            error_msg = str(e)
+            
+            # Clean up common API errors
+            if "400 INVALID_ARGUMENT" in error_msg and "API key not valid" in error_msg:
+                self.add_to_chat("System Error", "Invalid API key. Use '/api YOUR_KEY' to set a valid Gemini API key.")
+            elif "403" in error_msg and "quota" in error_msg.lower():
+                self.add_to_chat("System Error", "API quota exceeded. Check your Gemini API usage limits.")
+            elif "401" in error_msg or "unauthorized" in error_msg.lower():
+                self.add_to_chat("System Error", "Authentication failed. Check your API key with '/api YOUR_KEY'.")
+            elif "429" in error_msg or "rate limit" in error_msg.lower():
+                self.add_to_chat("System Error", "Rate limited. Please wait a moment before trying again.")
+            elif "network" in error_msg.lower() or "connection" in error_msg.lower():
+                self.add_to_chat("System Error", "Network error. Check your internet connection.")
+            else:
+                # Show full error for debugging
+                self.add_to_chat("System Error", f"An unexpected error occurred: {error_msg}")
 
 # --- Application Entry Point ---
 if __name__ == "__main__":
