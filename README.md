@@ -29,7 +29,7 @@ Your API key will be saved to .env in the same directory as the executable.
 * `what's using all my RAM?`
 * `uninstall Google Chrome`
 
-Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey).
+Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
 ## Built With
 Python • CustomTkinter • Google Gemini API • PowerShell
