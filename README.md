@@ -1,4 +1,4 @@
-# PowerShell Agent
+# AI Terminal
 A Python desktop app that lets you control Windows with natural language. Ask the AI what you want to do, and it executes the right PowerShell commands automatically.
 
 ## Features
