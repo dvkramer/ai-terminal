@@ -98,6 +98,9 @@ class PowerShellAgentApp(ctk.CTk):
         self.entry = ctk.CTkEntry(self, placeholder_text="Ask me to do anything on this system...")
         self.entry.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
         self.entry.bind("<Return>", self.send_message_event)
+        
+        # Set focus to the input box after the window is fully loaded
+        self.entry.after(10, self.entry.focus_set)
     
     def initialize_ai(self):
         """Initialize the AI client and tools with the API key."""
