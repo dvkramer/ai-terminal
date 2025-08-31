@@ -17,8 +17,10 @@ A Python desktop app that lets you control Windows with natural language. Ask th
    ```bash
    python agent.py
    ```
-4. **API Key**
+4. **Gemini API Key**
+
 In the program, type ```/api your_api_key```
+
 Your API key will be saved to .env in the same directory as the executable.
 
 ## Usage Examples
