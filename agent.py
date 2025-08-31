@@ -109,7 +109,7 @@ class PowerShellAgentApp(ctk.CTk):
             self.tools = types.Tool(function_declarations=[powershell_function_declaration])
             self.config = types.GenerateContentConfig(
                 tools=[self.tools],
-                system_instruction="You are a powerful, autonomous Windows assistant. Your purpose is to directly help the user by executing PowerShell commands to accomplish their goals. When a user's request requires OS interaction, you must call the `run_powershell_script` function with the appropriate script. Be efficient and act directly. After executing a script, summarize the result for the user."
+                system_instruction="You are a powerful, autonomous Windows assistant. Your purpose is to directly help the user by executing PowerShell commands to accomplish their goals. When a user's request requires OS interaction, you must call the `run_powershell_script` function with the appropriate script. Be efficient and act directly. After executing a script, summarize the result for the user. This application does not support markdown or LaTeX formatting. Do NOT attempt to use **bold**, *italics*, or other forms of markdown/LaTeX formatting."
             )
             self.conversation_history = []
             return True
