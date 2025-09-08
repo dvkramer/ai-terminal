@@ -62,13 +62,7 @@ class PowerShellAgentApp(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
-        self.api_key = api_key
-        self.client = None
-        self.tools = None
-        self.config = None
-        self.conversation_history = []
-
-        # --- UI Layout --- (MOVED UP TO FIX THE CRASH)
+        # --- UI Layout ---
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -79,14 +73,18 @@ class PowerShellAgentApp(ctk.CTk):
         self.entry.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
         self.entry.bind("<Return>", self.send_message_event)
         self.entry.after(10, self.entry.focus_set)
-        
-        # --- ORIGINAL POSITION OF API KEY CHECK ---
-        # This code is now safe to run because self.textbox has been created.
+
+        self.api_key = api_key
+        self.client = None
+        self.tools = None
+        self.config = None
+
         if self.api_key:
             self.initialize_ai()
         else:
             self.add_to_chat("System", "No API key found. Use '/api YOUR_KEY' to set your Gemini API key.")
 
+        self.conversation_history = []
 
     def initialize_ai(self):
         """Initialize the AI client and tools with the API key."""
