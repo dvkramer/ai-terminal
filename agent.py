@@ -62,19 +62,15 @@ class PowerShellAgentApp(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
+        # Initialize attributes
         self.api_key = api_key
         self.client = None
         self.tools = None
         self.config = None
-
-        if self.api_key:
-            self.initialize_ai()
-        else:
-            self.add_to_chat("System", "No API key found. Use '/api YOUR_KEY' to set your Gemini API key.")
-
         self.conversation_history = []
 
-        # --- UI Layout ---
+        # --- UI Layout --- (MOVED UP)
+        # Create all UI widgets first before any logic uses them.
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -86,13 +82,21 @@ class PowerShellAgentApp(ctk.CTk):
         self.entry.bind("<Return>", self.send_message_event)
         self.entry.after(10, self.entry.focus_set)
 
+        # --- AI Initialization and Startup Message --- (NOW SAFE TO RUN)
+        # Now that self.textbox exists, we can safely call self.add_to_chat().
+        if self.api_key:
+            self.initialize_ai()
+        else:
+            self.add_to_chat("System", "No API key found. Use '/api YOUR_KEY' to set your Gemini API key.")
+
+
     def initialize_ai(self):
         """Initialize the AI client and tools with the API key."""
         try:
-            self.client = genai.Client(api_key=self.api_key)
-            self.tools = types.Tool(function_declarations=[powershell_function_declaration])
-            self.config = types.GenerateContentConfig(
-                tools=[self.tools],
+            genai.configure(api_key=self.api_key) # Recommended way to configure
+            self.model = genai.GenerativeModel(
+                model_name="gemini-1.5-flash", # Updated model name for better tool use
+                tools=[run_powershell_script],
                 system_instruction=(
                     "You are a powerful, autonomous Windows assistant. "
                     "Your purpose is to directly help the user by executing PowerShell commands. "
@@ -104,7 +108,8 @@ class PowerShellAgentApp(ctk.CTk):
                     "Your turn is not complete until you output the phrase 'END OF TURN.' at the end of your final message."
                 )
             )
-            self.conversation_history = []
+            # Start a chat session to maintain history
+            self.chat = self.model.start_chat(enable_automatic_function_calling=True)
             return True
         except Exception as e:
             self.add_to_chat("System Error", f"Failed to initialize AI: {str(e)}")
@@ -174,8 +179,8 @@ class PowerShellAgentApp(ctk.CTk):
         if self.handle_api_command(prompt):
             return
 
-        if not self.client:
-            self.add_to_chat("System Error", "No API key set. Use '/api YOUR_KEY' to set your Gemini API key.")
+        if not self.model: # Check if the model was initialized
+            self.add_to_chat("System Error", "AI model not initialized. Use '/api YOUR_KEY' to set your API key.")
             return
 
         thread = threading.Thread(target=self.process_ai_interaction, args=(prompt,))
@@ -183,71 +188,28 @@ class PowerShellAgentApp(ctk.CTk):
         thread.start()
 
     def process_ai_interaction(self, prompt: str):
-        """Persistent turn loop until 'END OF TURN.' is printed."""
+        """Sends a message to the chat session and handles the response."""
         try:
-            self.conversation_history.append(types.Content(
-                role="user", 
-                parts=[types.Part(text=prompt)]
-            ))
+            # Automatic function calling will handle the loop
+            response = self.chat.send_message(prompt)
 
-            response = self.client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=self.conversation_history,
-                config=self.config,
-            )
-
-            while True:
-                self.conversation_history.append(response.candidates[0].content)
-
-                # Handle function call if present
-                if (response.candidates[0].content.parts and
-                    hasattr(response.candidates[0].content.parts[0], 'function_call') and
-                    response.candidates[0].content.parts[0].function_call):
-
-                    function_call = response.candidates[0].content.parts[0].function_call
-
-                    if function_call.name == "run_powershell_script":
-                        script_to_run = function_call.args['script']
+            # Check for tool calls in the history to display them
+            last_message = self.chat.history[-1]
+            if last_message.role == 'model' and last_message.parts:
+                for part in last_message.parts:
+                    if part.function_call:
+                        fc = part.function_call
+                        script_to_run = fc.args['script']
                         self.add_to_chat("Agent (Action)", f"Executing PowerShell:\n---\n{script_to_run}\n---")
-                        result = run_powershell_script(script_to_run)
 
-                        function_response_part = types.Part.from_function_response(
-                            name=function_call.name,
-                            response={"result": result},
-                        )
-                        self.conversation_history.append(types.Content(
-                            role="user",
-                            parts=[function_response_part]
-                        ))
-
-                        response = self.client.models.generate_content(
-                            model="gemini-2.5-flash",
-                            contents=self.conversation_history,
-                            config=self.config,
-                        )
-                        continue
-                    else:
-                        self.add_to_chat("System Error", f"Unknown function call: {function_call.name}")
-                        break
-
-                # Normal text response
-                text = response.text.strip()
-                if text:
-                    self.add_to_chat("Agent", text)
-
-                # Turn ends only when model says 'END OF TURN.'
-                if text.endswith("END OF TURN."):
-                    break
-
-                # Otherwise, keep looping
-                response = self.client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=self.conversation_history,
-                    config=self.config,
-                )
+            # The final response text after function calls are handled
+            final_text = response.text.strip()
+            if final_text:
+                 self.add_to_chat("Agent", final_text)
 
         except Exception as e:
             self.add_to_chat("System Error", f"An unexpected error occurred: {str(e)}")
+
 
 # --- Application Entry Point ---
 if __name__ == "__main__":
